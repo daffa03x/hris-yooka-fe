@@ -1,20 +1,24 @@
-# ---- 1. Build Stage ----
-FROM node:18-alpine AS builder
+# ---- BUILD STAGE ----
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --production=false
+RUN npm install
 
 COPY . .
 RUN npm run build
 
-# ---- 2. Run Stage ----
-FROM node:18-alpine
+# ---- RUN STAGE ----
+FROM node:18-alpine AS runner
 WORKDIR /app
-
-COPY --from=builder /app ./
 
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["npm", "start"]
+# copy standalone build
+COPY --from=builder /app/.next/standalone ./
+# copy static files
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+CMD ["node", "server.js"]
